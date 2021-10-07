@@ -1,0 +1,47 @@
+version: '3.8'
+services: 
+  backend:
+    # tell this docker compose to use Dockerfile from current directory (.)
+    build: 
+      context: . 
+      dockerfile: Dockerfile
+    # trigger to run with localhost of port 8000
+    # otherwise we cannot connect to the port with our localhost
+    # putting command here is same as putting in Dockerfile CMD
+    command: 'python3 manage.py runserver 0.0.0.0:8000'
+    ports:
+      # tell localhost to listen to specific port
+      # which is 8000 local port to listen to 8000 docker
+      - 8000:8000 # local port: docker port
+    volumes:
+      # all the file from current dir (.) are connected with 
+      # the docker container app and everytime there's a change in docker up
+      # those changes will pass to the `app` docker container
+      # on the other hands, if changes happen in docker file, it will reflect in local
+      - .:/app
+    depends_on: 
+      - db # db container should run first, so backend container can run  
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: 'python3 consumer.py'
+    depends_on: 
+      - db
+    
+  db:
+    image: mysql:5.7.22
+    # sometimes mysql stops and this will stop our docker container
+    # and our app will not run, so this will restart it again
+    restart: always
+    environment: # some environment variables
+      MYSQL_DATABASE: admin
+      MYSQL_USER: root
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      # when MySQL stores data, it needs to map into a folder
+      - .dbdata:/var/lib/mysql
+    ports:
+      - 33066:3306
